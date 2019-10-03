@@ -8,5 +8,9 @@ git remote add origin https://github.com/ydlamia/kawai-todo
 git pull origin master
 
 git add .
+
+
 git commit -m "Initial Commit"
+
+
 git push origin master
