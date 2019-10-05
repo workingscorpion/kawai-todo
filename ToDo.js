@@ -7,21 +7,32 @@ import {
   Dimensions,
   TextInput
 } from "react-native";
-import { FontAwesome5, EvilIcons, Entypo } from "@expo/vector-icons";
+import PropTypes from "prop-types";
+// import { FontAwesome5, EvilIcons, Entypo } from "@expo/vector-icons";
 
 const { width, height } = Dimensions.get("window");
 
 export default class ToDo extends Component {
-  state = {
-    isEditing: false,
-    isCompleted: false,
-    toDoValue: ""
+  constructor(props) {
+    super(props);
+    this.state = {
+      isEditing: false,
+      toDoValue: props.text
+    };
+  }
+  static propTypes = {
+    text: PropTypes.string.isRequired,
+    isCompleted: PropTypes.bool.isRequired,
+    deleteToDo: PropTypes.func.isRequired,
+    id: PropTypes.string.isRequired,
+    completeToDo: PropTypes.func.isRequired,
+    uncompleteToDo: PropTypes.func.isRequired,
+    updateToDo: PropTypes.func.isRequired
   };
+
   render() {
-    const { isCompleted } = this.state;
-    const { isEditing } = this.state;
-    // const { iconName } = "check-square";
-    const { text } = this.props;
+    const { isEditing, toDoValue } = this.state;
+    const { text, id, deleteToDo, isCompleted } = this.props;
     return (
       <View style={styles.container}>
         <View style={styles.column}>
@@ -53,10 +64,11 @@ export default class ToDo extends Component {
                 isCompleted ? styles.completedText : styles.uncompletedText
               ]}
             >
-              Hello I'm a To Do
+              {text}
             </Text>
           )}
         </View>
+
         {isEditing ? (
           <View style={styles.actions}>
             <TouchableOpacity onPressOut={this._finishEditing}>
@@ -83,7 +95,12 @@ export default class ToDo extends Component {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPressOut={event => {
+                event.stopPropagation;
+                deleteToDo(id);
+              }}
+            >
               <View style={styles.actionContainer}>
                 <Text style={styles.actionText}>
                   {/* <Entypo name="cross" size={25}></Entypo> */}❌
@@ -96,23 +113,33 @@ export default class ToDo extends Component {
     );
   }
 
-  _toggleComplete = () => {
-    this.setState(prevState => {
-      return {
-        isCompleted: !prevState.isCompleted
-      };
-    });
+  _toggleComplete = event => {
+    // this.setState(prevState => {
+    //   return {
+    //     isCompleted: !prevState.isCompleted
+    //   };
+    // });
+    event.stopPropagation();
+    const { isCompleted, uncompleteToDo, completeToDo, id } = this.props;
+    if (isCompleted) {
+      uncompleteToDo(id);
+    } else {
+      completeToDo(id);
+    }
   };
 
-  _startEditing = () => {
-    const { text } = this.props;
+  _startEditing = event => {
+    event.stopPropagation();
     this.setState({
-      isEditing: true,
-      toDoValue: text
+      isEditing: true
     });
   };
 
-  _finishEditing = () => {
+  _finishEditing = event => {
+    event.stopPropagation();
+    const { toDoValue } = this.state;
+    const { id, updateToDo } = this.props;
+    updateToDo(id, toDoValue);
     this.setState({
       isEditing: false
     });
@@ -162,8 +189,7 @@ const styles = StyleSheet.create({
   column: {
     flexDirection: "row",
     alignItems: "center",
-    width: width / 2,
-    justifyContent: "space-between"
+    width: width / 2
   },
   actions: {
     flexDirection: "row"

@@ -13,3 +13,11 @@ git commit -m "Initial Commit"
 git push origin master
 
 npm install uuid --save
+
+npm install -g npm
+
+npm install -g expo-cli
+
+npm install create-react-native-app
+
+npm install prop-types

@@ -7,7 +7,8 @@ import {
   TextInput,
   Dimensions,
   Platform,
-  ScrollView
+  ScrollView,
+  AsyncStorage
 } from "react-native";
 import ToDo from "./ToDo";
 import { AppLoading } from "expo";
@@ -15,27 +16,21 @@ import uuidv1 from "uuid/v1";
 
 const { height, width } = Dimensions.get("window");
 
-// export default function App() {
-//   return (
-//     <View style={styles.container}>
-
-//     </View>
-//   );
-// }
-
 export default class App extends Component {
   state = {
     newToDo: "",
-    loadedToDos: false
+    loadedToDos: false,
+    toDos: {}
   };
-
   componentDidMount = () => {
-    this.setState();
+    // AsyncStorage.removeItem();
+    this._loadToDos(); //이 부분을 작성 안해주면 if문이 계속 실행되기 때문에 무한 loop에 빠짐.
   };
-
   render() {
-    const { newToDo, loadedToDos } = this.state;
+    const { newToDo, loadedToDos, toDos } = this.state;
     if (!loadedToDos) {
+      // AsyncStorage.setItem("toDos", JSON.stringify({}));
+      AsyncStorage.setItem("toDos", JSON.stringify(toDos));
       return <AppLoading />;
     }
     return (
@@ -48,28 +43,48 @@ export default class App extends Component {
             placeholderTextColor={"#999"}
             style={styles.input}
             value={newToDo}
-            onChangeText={this._crontolNewToDo}
+            onChangeText={this._controlNewToDo}
             returnKeyType={"done"}
             autoCorrect={false}
-            // onSubmitEditing={this._addToDo}
+            onSubmitEditing={this._addToDo}
           />
           <ScrollView contentContainerStyle={styles.toDos}>
-            <ToDo text={"Hello I'm a To Do"}></ToDo>
+            {Object.values(toDos)
+              .reverse()
+              .map(toDo => (
+                <ToDo
+                  key={toDo.id}
+                  deleteToDo={this._deleteToDo}
+                  uncompleteToDo={this._uncompleteToDo}
+                  completeToDo={this._completeToDo}
+                  updateToDo={this._updateToDo}
+                  {...toDo}
+                />
+              ))}
+            {/* {Object.values(toDos).map(toDo => (
+              <ToDo key={toDo.id} {...toDo} />
+            ))} */}
           </ScrollView>
         </View>
       </View>
     );
   }
-  _crontolNewToDo = text => {
+  _controlNewToDo = text => {
     this.setState({
       newToDo: text
     });
   };
 
-  _loadToDos = () => {
-    this.setState({
-      loadedToDos: true
-    });
+  _loadToDos = async () => {
+    try {
+      const toDos = await AsyncStorage.getItem("toDos"); //wait는 이 함수가 다 실행될때까지 다른 작업은 잠시 기다리라는 의미
+      console.log(`AsyncStorage.getItem("toDos") = ` + toDos);
+      const parsedToDos = JSON.parse(toDos);
+      console.log("JSON.parse(toDos) :", parsedToDos);
+      this.setState({ loadedToDos: true, toDos: parsedToDos });
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   _addToDo = () => {
@@ -94,9 +109,82 @@ export default class App extends Component {
             ...newToDoObject
           }
         };
+        this._saveToDos(newState.toDos);
         return { ...newState };
       });
     }
+  };
+
+  _deleteToDo = id => {
+    this.setState(prevState => {
+      const toDos = prevState.toDos;
+      delete toDos[id];
+      const newState = {
+        ...prevState,
+        ...toDos
+      };
+      this._saveToDos(newState.toDos);
+      return { ...newState };
+    });
+  };
+
+  _uncompleteToDo = id => {
+    this.setState(prevState => {
+      const newState = {
+        ...prevState,
+        toDos: {
+          ...prevState.toDos,
+          [id]: {
+            ...prevState.toDos[id],
+            isCompleted: false
+          }
+        }
+      };
+      this._saveToDos(newState.toDos);
+      return { ...newState };
+    });
+  };
+
+  _completeToDo = id => {
+    this.setState(prevState => {
+      const newState = {
+        ...prevState,
+        toDos: {
+          ...prevState.toDos,
+          [id]: {
+            ...prevState.toDos[id],
+            isCompleted: true
+          }
+        }
+      };
+      this._saveToDos(newState.toDos);
+      return { ...newState };
+    });
+  };
+
+  _updateToDo = (id, text) => {
+    this.setState(prevState => {
+      const newState = {
+        ...prevState,
+        toDos: {
+          ...prevState.toDos,
+          [id]: {
+            ...prevState.toDos[id],
+            text: text
+          }
+        }
+      };
+      this._saveToDos(newState.toDos);
+      return { ...newState };
+    });
+  };
+
+  _saveToDos = newToDos => {
+    // console.log(JSON.stringify(newToDos));
+    // const saveToDos = AsyncStorage.setItem("toDos", newToDos);
+    //AsyncStorage는 Object가 아니라 string 저장만을 제공하기 때문에 위와같이 object를 저장하면 crash 발생됨
+    //따라서 JSON.stringify를 통해 객체를 string으로 만들어야함
+    const saveToDos = AsyncStorage.setItem("toDos", JSON.stringify(newToDos));
   };
 }
 
